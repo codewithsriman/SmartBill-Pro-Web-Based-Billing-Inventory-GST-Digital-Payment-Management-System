@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Billing · SmartBill Pro</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+<link href="css/design-system.css" rel="stylesheet">
+</head>
+<body>
+
+<div class="app-shell">
+  <div id="sb-app-shell-mount"></div>
+
+  <main class="sb-main">
+    <header class="sb-topbar" id="sb-topbar-mount"></header>
+
+    <div class="sb-content">
+
+      <!-- CHECKOUT MODE -->
+      <div id="checkoutView" class="d-none">
+        <div class="row g-3">
+          <div class="col-lg-7">
+            <div class="sb-card">
+              <div class="sb-card-header"><h6 class="m-0 fw-bold">Item Summary</h6></div>
+              <div class="table-responsive">
+                <table class="table sb-table m-0">
+                  <thead><tr><th>Product</th><th>Qty</th><th>Price</th><th>GST</th><th>Amount</th></tr></thead>
+                  <tbody id="checkoutItemsBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-5">
+            <div class="sb-card mb-3">
+              <div class="sb-card-header"><h6 class="m-0 fw-bold">Calculations</h6></div>
+              <div class="sb-card-body">
+                <div class="mb-3">
+                  <label class="form-label">Discount Amount</label>
+                  <input type="number" class="form-control" id="discountInput" min="0" step="0.01" value="0">
+                </div>
+
+                <div class="d-flex justify-content-between mb-1" style="font-size:13.5px;">
+                  <span class="text-muted">Subtotal</span><span class="text-mono" id="calcSubtotal">₹0.00</span>
+                </div>
+                <div class="d-flex justify-content-between mb-1" style="font-size:13.5px;">
+                  <span class="text-muted">Discount</span><span class="text-mono" id="calcDiscount">−₹0.00</span>
+                </div>
+                <div class="d-flex justify-content-between mb-3" style="font-size:13.5px;">
+                  <span class="text-muted">GST Total (CGST+SGST)</span><span class="text-mono" id="calcGst">₹0.00</span>
+                </div>
+
+                <!-- GST breakdown signature visual -->
+                <div class="gst-stack mb-1" id="gstStack">
+                  <div class="seg-subtotal" id="segSubtotal" style="width:70%;"></div>
+                  <div class="seg-tax" id="segTax" style="width:25%;"></div>
+                  <div class="seg-discount" id="segDiscount" style="width:5%;"></div>
+                </div>
+                <div class="gst-legend mb-3">
+                  <span><span class="dot" style="background:var(--sb-primary);"></span>Subtotal</span>
+                  <span><span class="dot" style="background:var(--sb-accent);"></span>Tax</span>
+                  <span><span class="dot" style="background:var(--sb-ink-300);"></span>Discount</span>
+                </div>
+
+                <hr>
+                <div class="d-flex justify-content-between mb-3">
+                  <span class="fw-bold">Grand Total</span>
+                  <span class="text-mono fw-bold" style="font-size:20px;color:var(--sb-primary);" id="calcGrandTotal">₹0.00</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="sb-card mb-3">
+              <div class="sb-card-header"><h6 class="m-0 fw-bold">Payment</h6></div>
+              <div class="sb-card-body">
+
+                <label class="form-label" style="font-size:11.5px;text-transform:uppercase;letter-spacing:0.04em;color:var(--sb-ink-500);">Offline Payments</label>
+                <div class="row g-2 mb-3" id="offlineMethodGroup"></div>
+
+                <label class="form-label" style="font-size:11.5px;text-transform:uppercase;letter-spacing:0.04em;color:var(--sb-ink-500);">Online Payments</label>
+                <div class="row g-2 mb-3" id="onlineMethodGroup"></div>
+
+                <!-- Offline: manual amount entry (Cash) -->
+                <div id="offlineAmountSection">
+                  <label class="form-label">Amount Paid</label>
+                  <input type="number" class="form-control mb-2" id="amountPaidInput" min="0" step="0.01" value="0">
+                  <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="markFullyPaid">
+                    <label class="form-check-label" style="font-size:13px;">Mark as fully paid</label>
+                  </div>
+                </div>
+
+                <!-- Online: Razorpay payment panel -->
+                <div id="razorpayPanel" class="d-none">
+                  <div class="p-3" style="background:var(--sb-ink-100);border-radius:10px;">
+                    <div class="d-flex justify-content-between mb-2" style="font-size:13px;">
+                      <span class="text-muted">Selected Method</span>
+                      <span class="fw-semibold" id="rzSelectedMethod">—</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2" style="font-size:13px;">
+                      <span class="text-muted">Payment Status</span>
+                      <span class="sb-badge pending" id="rzPaymentStatus">PENDING</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-3" style="font-size:13px;">
+                      <span class="text-muted">Transaction ID</span>
+                      <span class="text-mono" id="rzTransactionId" style="font-size:12px;">Not Generated</span>
+                    </div>
+
+                    <button class="btn btn-primary w-100" id="payWithRazorpayBtn">
+                      <i class="bi bi-credit-card-2-front"></i> Pay with Razorpay
+                    </button>
+
+                    <div id="rzSuccessBox" class="alert alert-success mt-3 mb-0 d-none" style="font-size:13px;">
+                      <div class="fw-bold mb-1"><i class="bi bi-check-circle-fill"></i> Payment Successful</div>
+                      <div>Transaction ID: <span class="text-mono" id="rzSuccessTxnId"></span></div>
+                      <div>Amount: <span class="text-mono" id="rzSuccessAmount"></span></div>
+                    </div>
+                    <div id="rzFailBox" class="alert alert-danger mt-3 mb-0 d-none" style="font-size:13px;">
+                      <div class="fw-bold mb-1"><i class="bi bi-x-circle-fill"></i> Payment Failed</div>
+                      <div>Please try again.</div>
+                    </div>
+                  </div>
+                </div>
+
+                <hr>
+                <div class="d-flex justify-content-between mb-1" style="font-size:13px;">
+                  <span class="text-muted">Amount Paid</span>
+                  <span class="text-mono fw-semibold" id="amountPaidPreview">₹0.00</span>
+                </div>
+                <div class="d-flex justify-content-between">
+                  <span class="text-muted" style="font-size:13px;">Payment Status</span>
+                  <span class="sb-badge pending" id="paymentStatusPreview">PENDING</span>
+                </div>
+              </div>
+            </div>
+
+            <button class="btn btn-primary w-100 py-2" id="generateInvoiceBtn"><i class="bi bi-receipt"></i> Generate Invoice</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- VIEW INVOICE MODE -->
+      <div id="viewInvoiceView" class="d-none">
+        <div class="sb-card">
+          <div class="sb-card-body text-center py-5" id="invoiceLoadingState">
+            <div class="spinner-border text-primary"></div>
+          </div>
+          <div id="invoiceDetailContent" class="d-none">
+            <div class="sb-card-body border-bottom d-flex justify-content-between align-items-start flex-wrap gap-3">
+              <div>
+                <div class="sb-page-title mb-1" id="viewInvoiceNumber"></div>
+                <div class="sb-page-subtitle" id="viewInvoiceDate"></div>
+              </div>
+              <div class="d-flex gap-2">
+                <span class="sb-badge" id="viewPaymentStatus"></span>
+                <button class="btn btn-sm btn-primary" onclick="window.location.href='share-invoice.html?invoiceId=' + currentInvoiceId">
+                  <i class="bi bi-share"></i> Share Invoice
+                </button>
+              </div>
+            </div>
+            <div class="sb-card-body">
+              <div class="row g-4">
+                <div class="col-md-6">
+                  <div style="font-size:12px;color:var(--sb-ink-500);text-transform:uppercase;font-weight:700;margin-bottom:4px;">Bill To</div>
+                  <div class="fw-semibold" id="viewCustomerName"></div>
+                  <div style="font-size:13px;color:var(--sb-ink-500);" id="viewCustomerPhone"></div>
+                </div>
+                <div class="col-md-6 text-md-end">
+                  <div style="font-size:12px;color:var(--sb-ink-500);text-transform:uppercase;font-weight:700;margin-bottom:4px;">Payment</div>
+                  <div id="viewPaymentMethod"></div>
+                </div>
+              </div>
+
+              <div class="table-responsive mt-4">
+                <table class="table sb-table">
+                  <thead><tr><th>Product</th><th>Qty</th><th>Price</th><th>GST</th><th>Amount</th></tr></thead>
+                  <tbody id="viewItemsBody"></tbody>
+                </table>
+              </div>
+
+              <div class="row justify-content-end">
+                <div class="col-md-5">
+                  <div class="d-flex justify-content-between mb-1" style="font-size:13.5px;"><span class="text-muted">Subtotal</span><span class="text-mono" id="viewSubtotal"></span></div>
+                  <div class="d-flex justify-content-between mb-1" style="font-size:13.5px;"><span class="text-muted">Discount</span><span class="text-mono" id="viewDiscount"></span></div>
+                  <div class="d-flex justify-content-between mb-1" style="font-size:13.5px;"><span class="text-muted">GST</span><span class="text-mono" id="viewGst"></span></div>
+                  <hr>
+                  <div class="d-flex justify-content-between mb-1"><span class="fw-bold">Grand Total</span><span class="text-mono fw-bold" id="viewGrandTotal"></span></div>
+                  <div class="d-flex justify-content-between mb-1" style="font-size:13.5px;"><span class="text-muted">Paid</span><span class="text-mono" id="viewAmountPaid"></span></div>
+                  <div class="d-flex justify-content-between" style="font-size:13.5px;"><span class="text-muted">Balance Due</span><span class="text-mono" id="viewBalanceDue"></span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script src="js/api-client.js"></script>
+<script src="js/app-shell.js"></script>
+<script src="js/bill-draft.js"></script>
+<script>
+  requireAuth();
+  renderAppShell('billing');
+
+  const OFFLINE_METHODS = [
+    { value: 'CASH', label: 'Cash', icon: 'bi-cash' },
+    { value: 'CREDIT', label: 'Credit', icon: 'bi-journal-text' },
+  ];
+  const ONLINE_METHODS = [
+    { value: 'UPI', label: 'UPI', icon: 'bi-phone' },
+    { value: 'QR', label: 'QR Payment', icon: 'bi-qr-code' },
+    { value: 'DEBIT_CARD', label: 'Debit Card', icon: 'bi-credit-card' },
+    { value: 'CREDIT_CARD', label: 'Credit Card', icon: 'bi-credit-card-2-front' },
+  ];
+  const ONLINE_VALUES = ONLINE_METHODS.map(m => m.value);
+
+  // Tracks the in-progress/completed Razorpay payment for this checkout session
+  let razorpayState = {
+    paymentId: null,       // our internal payments.id
+    razorpayOrderId: null,
+    status: 'NONE',        // NONE | PENDING | PAID | FAILED
+    transactionId: null,
+    amount: null
+  };
+
+  const params = new URLSearchParams(window.location.search);
+  let currentInvoiceId = null;
+
+  if (params.get('invoiceNumber')) {
+    renderTopbar('Invoice', 'Viewing finalized invoice');
+    showInvoiceView();
+    loadInvoiceByNumber(params.get('invoiceNumber'));
+  } else {
+    renderTopbar('Billing', 'Review totals, choose payment, and generate the invoice');
+    showCheckoutView();
+    initCheckout();
+  }
+
+  function showCheckoutView() {
+    document.getElementById('checkoutView').classList.remove('d-none');
+    document.getElementById('viewInvoiceView').classList.add('d-none');
+  }
+  function showInvoiceView() {
+    document.getElementById('viewInvoiceView').classList.remove('d-none');
+    document.getElementById('checkoutView').classList.add('d-none');
+  }
+
+  // ---------- CHECKOUT MODE ----------
+  function initCheckout() {
+    const header = BillDraft.getHeader();
+    const items = BillDraft.getItems();
+    if (!header || items.length === 0) {
+      showToast('No items to bill. Start a new bill first.', 'error');
+      window.location.href = 'new-bill.html';
+      return;
+    }
+
+    document.getElementById('checkoutItemsBody').innerHTML = items.map(i => {
+      const base = Number(i.quantity) * Number(i.pricePerUnit);
+      const gst = base * (Number(i.gstPercentage) / 100);
+      return `<tr>
+        <td>${i.productName}</td>
+        <td class="text-mono">${i.quantity} ${i.unit || ''}</td>
+        <td class="text-mono">${formatCurrency(i.pricePerUnit)}</td>
+        <td class="text-mono">${i.gstPercentage}%</td>
+        <td class="text-mono fw-semibold">${formatCurrency(base + gst)}</td>
+      </tr>`;
+    }).join('');
+
+    const offlineGroup = document.getElementById('offlineMethodGroup');
+    offlineGroup.innerHTML = OFFLINE_METHODS.map((pm, idx) => `
+      <div class="col-6">
+        <input type="radio" class="btn-check" name="paymentMethod" id="pm_${pm.value}" value="${pm.value}" ${idx === 0 ? 'checked' : ''}>
+        <label class="btn btn-outline-primary btn-sm w-100 d-flex flex-column align-items-center py-2" for="pm_${pm.value}" style="font-size:11.5px;">
+          <i class="bi ${pm.icon}" style="font-size:16px;"></i>${pm.label}
+        </label>
+      </div>`).join('');
+
+    const onlineGroup = document.getElementById('onlineMethodGroup');
+    onlineGroup.innerHTML = ONLINE_METHODS.map(pm => `
+      <div class="col-6">
+        <input type="radio" class="btn-check" name="paymentMethod" id="pm_${pm.value}" value="${pm.value}">
+        <label class="btn btn-outline-primary btn-sm w-100 d-flex flex-column align-items-center py-2" for="pm_${pm.value}" style="font-size:11.5px;">
+          <i class="bi ${pm.icon}" style="font-size:16px;"></i>${pm.label}
+        </label>
+      </div>`).join('');
+
+    document.querySelectorAll('input[name="paymentMethod"]').forEach(radio => {
+      radio.addEventListener('change', onPaymentMethodChange);
+    });
+
+    document.getElementById('discountInput').addEventListener('input', recalc);
+    document.getElementById('amountPaidInput').addEventListener('input', updatePaymentStatusPreview);
+    document.getElementById('markFullyPaid').addEventListener('change', (e) => {
+      if (e.target.checked) {
+        const totals = BillDraft.calculateTotals(Number(document.getElementById('discountInput').value || 0));
+        document.getElementById('amountPaidInput').value = totals.grandTotal;
+      }
+      updatePaymentStatusPreview();
+    });
+
+    document.getElementById('payWithRazorpayBtn').addEventListener('click', startRazorpayPayment);
+
+    onPaymentMethodChange();
+    recalc();
+  }
+
+  function selectedMethod() {
+    const checked = document.querySelector('input[name="paymentMethod"]:checked');
+    return checked ? checked.value : 'CASH';
+  }
+
+  function onPaymentMethodChange() {
+    const method = selectedMethod();
+    const isOnline = ONLINE_VALUES.includes(method);
+
+    document.getElementById('offlineAmountSection').classList.toggle('d-none', isOnline);
+    document.getElementById('razorpayPanel').classList.toggle('d-none', !isOnline);
+
+    // Switching methods invalidates any in-progress/completed payment for the old method
+    razorpayState = { paymentId: null, razorpayOrderId: null, status: 'NONE', transactionId: null, amount: null };
+    document.getElementById('rzSuccessBox').classList.add('d-none');
+    document.getElementById('rzFailBox').classList.add('d-none');
+
+    const methodLabel = (ONLINE_METHODS.find(m => m.value === method) || {}).label || method;
+    document.getElementById('rzSelectedMethod').textContent = methodLabel;
+    document.getElementById('rzPaymentStatus').textContent = 'PENDING';
+    document.getElementById('rzPaymentStatus').className = 'sb-badge pending';
+    document.getElementById('rzTransactionId').textContent = 'Not Generated';
+
+    if (!isOnline) {
+      // CASH: amount paid is manually editable. CREDIT: always pending, no collection now.
+      if (method === 'CREDIT') {
+        document.getElementById('amountPaidInput').value = 0;
+        document.getElementById('amountPaidInput').disabled = true;
+        document.getElementById('markFullyPaid').disabled = true;
+        document.getElementById('markFullyPaid').checked = false;
+      } else {
+        document.getElementById('amountPaidInput').disabled = false;
+        document.getElementById('markFullyPaid').disabled = false;
+      }
+    }
+
+    updatePaymentStatusPreview();
+  }
+
+  async function startRazorpayPayment() {
+    const discount = Number(document.getElementById('discountInput').value || 0);
+    const totals = BillDraft.calculateTotals(discount);
+    const method = selectedMethod();
+    const btn = document.getElementById('payWithRazorpayBtn');
+
+    document.getElementById('rzSuccessBox').classList.add('d-none');
+    document.getElementById('rzFailBox').classList.add('d-none');
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Creating order…';
+
+    try {
+      const orderRes = await SmartBillAPI.post('/payments/razorpay/order', {
+        amount: totals.grandTotal,
+        paymentMethod: method
+      });
+      const order = orderRes.data;
+      razorpayState.paymentId = order.paymentId;
+      razorpayState.razorpayOrderId = order.razorpayOrderId;
+      razorpayState.status = 'PENDING';
+
+      btn.innerHTML = '<i class="bi bi-credit-card-2-front"></i> Pay with Razorpay';
+      btn.disabled = false;
+
+      const header = BillDraft.getHeader();
+      const rzpOptions = {
+        key: order.razorpayKeyId,
+        amount: Math.round(order.amount * 100),
+        currency: order.currency,
+        name: 'SmartBill Pro',
+        description: `Invoice payment — ${header.customerName}`,
+        order_id: order.razorpayOrderId,
+        prefill: {
+          name: header.customerName || '',
+          contact: header.customerPhone || ''
+        },
+        theme: { color: '#2563EB' },
+        // No `method` filter here on purpose: Razorpay's default Checkout already
+        // surfaces UPI (incl. QR), Cards, Netbanking, and Wallets. An explicit
+        // method allowlist can unintentionally hide options depending on SDK
+        // version/account config, so we let Razorpay show its full default set.
+        handler: function (response) {
+          verifyRazorpayPayment(response, totals.grandTotal);
+        },
+        modal: {
+          ondismiss: function () {
+            if (razorpayState.status !== 'PAID') {
+              showRazorpayFailure();
+            }
+          }
+        }
+      };
+
+      const rzp = new Razorpay(rzpOptions);
+      rzp.on('payment.failed', function () {
+        showRazorpayFailure();
+      });
+      rzp.open();
+
+    } catch (err) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-credit-card-2-front"></i> Pay with Razorpay';
+      showToast(err.message || 'Could not start payment. Check Razorpay configuration.', 'error');
+    }
+  }
+
+  async function verifyRazorpayPayment(rzpResponse, grandTotal) {
+    try {
+      const verifyRes = await SmartBillAPI.post('/payments/razorpay/verify', {
+        paymentId: razorpayState.paymentId,
+        razorpayOrderId: rzpResponse.razorpay_order_id,
+        razorpayPaymentId: rzpResponse.razorpay_payment_id,
+        razorpaySignature: rzpResponse.razorpay_signature
+      });
+      const result = verifyRes.data;
+
+      if (result.paymentStatus === 'PAID') {
+        razorpayState.status = 'PAID';
+        razorpayState.transactionId = result.transactionId;
+        razorpayState.amount = result.amount;
+
+        document.getElementById('rzPaymentStatus').textContent = 'PAID';
+        document.getElementById('rzPaymentStatus').className = 'sb-badge paid';
+        document.getElementById('rzTransactionId').textContent = result.transactionId;
+
+        document.getElementById('rzSuccessTxnId').textContent = result.transactionId;
+        document.getElementById('rzSuccessAmount').textContent = formatCurrency(result.amount);
+        document.getElementById('rzSuccessBox').classList.remove('d-none');
+        document.getElementById('rzFailBox').classList.add('d-none');
+
+        showToast('Payment successful', 'success');
+      } else {
+        showRazorpayFailure();
+      }
+      updatePaymentStatusPreview();
+    } catch (err) {
+      showRazorpayFailure();
+      showToast(err.message || 'Payment verification failed', 'error');
+    }
+  }
+
+  function showRazorpayFailure() {
+    razorpayState.status = 'FAILED';
+    document.getElementById('rzPaymentStatus').textContent = 'PENDING';
+    document.getElementById('rzPaymentStatus').className = 'sb-badge pending';
+    document.getElementById('rzFailBox').classList.remove('d-none');
+    document.getElementById('rzSuccessBox').classList.add('d-none');
+    updatePaymentStatusPreview();
+  }
+
+  function recalc() {
+    const discount = Number(document.getElementById('discountInput').value || 0);
+    const totals = BillDraft.calculateTotals(discount);
+
+    document.getElementById('calcSubtotal').textContent = formatCurrency(totals.subtotal);
+    document.getElementById('calcDiscount').textContent = '−' + formatCurrency(discount);
+    document.getElementById('calcGst').textContent = formatCurrency(totals.gstTotal);
+    document.getElementById('calcGrandTotal').textContent = formatCurrency(totals.grandTotal);
+
+    const total = totals.subtotal + totals.gstTotal;
+    const subtotalPct = total > 0 ? (totals.subtotal / total) * 100 : 70;
+    const taxPct = total > 0 ? (totals.gstTotal / total) * 100 : 25;
+    document.getElementById('segSubtotal').style.width = subtotalPct + '%';
+    document.getElementById('segTax').style.width = taxPct + '%';
+    document.getElementById('segDiscount').style.width = Math.min(5, (discount / (total || 1)) * 100) + '%';
+
+    updatePaymentStatusPreview();
+  }
+
+  function updatePaymentStatusPreview() {
+    const discount = Number(document.getElementById('discountInput').value || 0);
+    const totals = BillDraft.calculateTotals(discount);
+    const method = selectedMethod();
+    const badge = document.getElementById('paymentStatusPreview');
+    const amountPaidPreview = document.getElementById('amountPaidPreview');
+
+    let status = 'PENDING', cls = 'pending', amountPaid = 0;
+
+    if (method === 'CREDIT') {
+      status = 'PENDING'; cls = 'pending'; amountPaid = 0;
+    } else if (ONLINE_VALUES.includes(method)) {
+      if (razorpayState.status === 'PAID') {
+        status = 'PAID'; cls = 'paid'; amountPaid = razorpayState.amount;
+      } else {
+        status = 'PENDING'; cls = 'pending'; amountPaid = 0;
+      }
+    } else {
+      // CASH
+      amountPaid = Number(document.getElementById('amountPaidInput').value || 0);
+      if (amountPaid >= totals.grandTotal && totals.grandTotal > 0) { status = 'PAID'; cls = 'paid'; }
+      else if (amountPaid > 0) { status = 'PARTIAL'; cls = 'partial'; }
+    }
+
+    badge.textContent = status;
+    badge.className = 'sb-badge ' + cls;
+    amountPaidPreview.textContent = formatCurrency(amountPaid);
+
+    // Generate Invoice is disabled until an online payment actually succeeds
+    const generateBtn = document.getElementById('generateInvoiceBtn');
+    if (ONLINE_VALUES.includes(method)) {
+      generateBtn.disabled = razorpayState.status !== 'PAID';
+    } else {
+      generateBtn.disabled = false;
+    }
+  }
+
+  document.getElementById('generateInvoiceBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('generateInvoiceBtn');
+    const header = BillDraft.getHeader();
+    const items = BillDraft.getItems();
+    const discount = Number(document.getElementById('discountInput').value || 0);
+    const paymentMethod = selectedMethod();
+    const isOnline = ONLINE_VALUES.includes(paymentMethod);
+
+    if (isOnline && razorpayState.status !== 'PAID') {
+      showToast('Please complete the Razorpay payment before generating the invoice', 'error');
+      return;
+    }
+
+    const amountPaid = isOnline
+      ? razorpayState.amount
+      : (paymentMethod === 'CREDIT' ? 0 : Number(document.getElementById('amountPaidInput').value || 0));
+
+    const payload = {
+      customerId: header.customerId || null,
+      customerName: header.customerName,
+      customerPhone: header.customerPhone,
+      invoiceDate: header.invoiceDate,
+      items: items.map(i => ({
+        productId: i.productId || null,
+        productName: i.productName,
+        quantity: i.quantity,
+        unit: i.unit,
+        pricePerUnit: i.pricePerUnit,
+        gstPercentage: i.gstPercentage
+      })),
+      discountAmount: discount,
+      paymentMethod,
+      amountPaid,
+      finalize: true,
+      paymentId: isOnline ? razorpayState.paymentId : null
+    };
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Generating…';
+
+    try {
+      const res = await SmartBillAPI.post('/invoices', payload);
+      BillDraft.clear();
+      showToast('Invoice generated successfully', 'success');
+      window.location.href = `share-invoice.html?invoiceId=${res.data.id}`;
+    } catch (err) {
+      showToast(err.message || 'Failed to generate invoice', 'error');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-receipt"></i> Generate Invoice';
+    }
+  });
+
+  // ---------- VIEW INVOICE MODE ----------
+  async function loadInvoiceByNumber(invoiceNumber) {
+    try {
+      const res = await SmartBillAPI.get(`/invoices/by-number/${encodeURIComponent(invoiceNumber)}`);
+      renderInvoiceDetail(res.data);
+    } catch (err) {
+      showToast(err.message || 'Could not load invoice', 'error');
+    }
+  }
+
+  function renderInvoiceDetail(inv) {
+    currentInvoiceId = inv.id;
+    document.getElementById('invoiceLoadingState').classList.add('d-none');
+    document.getElementById('invoiceDetailContent').classList.remove('d-none');
+
+    document.getElementById('viewInvoiceNumber').textContent = inv.invoiceNumber;
+    document.getElementById('viewInvoiceDate').textContent = formatDate(inv.invoiceDate);
+
+    const statusMap = { PAID: 'paid', PENDING: 'pending', PARTIAL: 'partial' };
+    const badge = document.getElementById('viewPaymentStatus');
+    badge.textContent = inv.paymentStatus;
+    badge.className = 'sb-badge ' + (statusMap[inv.paymentStatus] || 'draft');
+
+    document.getElementById('viewCustomerName').textContent = inv.customerName || 'Walk-in Customer';
+    document.getElementById('viewCustomerPhone').textContent = inv.customerPhone || '';
+    document.getElementById('viewPaymentMethod').textContent = inv.paymentMethod;
+
+    document.getElementById('viewItemsBody').innerHTML = inv.items.map(i => `
+      <tr>
+        <td>${i.productName}</td>
+        <td class="text-mono">${i.quantity} ${i.unit || ''}</td>
+        <td class="text-mono">${formatCurrency(i.pricePerUnit)}</td>
+        <td class="text-mono">${i.gstPercentage}%</td>
+        <td class="text-mono fw-semibold">${formatCurrency(i.lineTotal)}</td>
+      </tr>`).join('');
+
+    document.getElementById('viewSubtotal').textContent = formatCurrency(inv.subtotal);
+    document.getElementById('viewDiscount').textContent = '−' + formatCurrency(inv.discountAmount);
+    document.getElementById('viewGst').textContent = formatCurrency(inv.gstTotal);
+    document.getElementById('viewGrandTotal').textContent = formatCurrency(inv.grandTotal);
+    document.getElementById('viewAmountPaid').textContent = formatCurrency(inv.amountPaid);
+    document.getElementById('viewBalanceDue').textContent = formatCurrency(inv.balanceDue);
+  }
+</script>
+</body>
+</html>

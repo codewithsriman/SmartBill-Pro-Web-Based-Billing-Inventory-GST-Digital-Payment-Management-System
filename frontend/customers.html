@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Customers · SmartBill Pro</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+<link href="css/design-system.css" rel="stylesheet">
+</head>
+<body>
+
+<div class="app-shell">
+  <div id="sb-app-shell-mount"></div>
+
+  <main class="sb-main">
+    <header class="sb-topbar" id="sb-topbar-mount"></header>
+
+    <div class="sb-content">
+      <div class="sb-card">
+        <div class="sb-card-header flex-wrap gap-2">
+          <input type="text" class="form-control" id="searchInput" placeholder="Search by name or mobile…" style="max-width:380px;">
+          <button class="btn btn-primary" onclick="openCreateModal()"><i class="bi bi-plus-lg"></i> Add Customer</button>
+        </div>
+        <div class="table-responsive">
+          <table class="table sb-table m-0">
+            <thead><tr><th>Customer</th><th>Mobile</th><th>GST Number</th><th>Outstanding</th><th></th></tr></thead>
+            <tbody id="customersBody"><tr><td colspan="5"><div class="skeleton" style="height:18px;"></div></td></tr></tbody>
+          </table>
+        </div>
+        <div id="customersEmpty" class="sb-empty-state d-none">
+          <i class="bi bi-people"></i>
+          <div class="fw-semibold">No customers yet</div>
+        </div>
+        <div class="sb-card-body border-top d-flex justify-content-between align-items-center" id="paginationBar"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="modal fade" id="customerModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="customerModalTitle">Add Customer</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="customerForm">
+        <div class="modal-body">
+          <input type="hidden" id="customerId">
+          <div class="mb-3">
+            <label class="form-label">Customer Name</label>
+            <input type="text" class="form-control" id="customerName" required>
+          </div>
+          <div class="row g-3 mb-3">
+            <div class="col-6">
+              <label class="form-label">Mobile Number</label>
+              <input type="tel" class="form-control" id="mobileNumber" required>
+            </div>
+            <div class="col-6">
+              <label class="form-label">Email</label>
+              <input type="email" class="form-control" id="email">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Address</label>
+            <input type="text" class="form-control" id="address">
+          </div>
+          <div class="mb-1">
+            <label class="form-label">GST Number <span class="text-muted fw-normal">(optional)</span></label>
+            <input type="text" class="form-control" id="gstNumber">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="customerSaveBtn">Save Customer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/api-client.js"></script>
+<script src="js/app-shell.js"></script>
+<script>
+  requireAuth();
+  renderAppShell('customers');
+  renderTopbar('Customer Management', 'Track customers and outstanding balances');
+
+  let currentPage = 0;
+  const PAGE_SIZE = 15;
+  let customerModal;
+  document.addEventListener('DOMContentLoaded', () => {
+    customerModal = new bootstrap.Modal(document.getElementById('customerModal'));
+  });
+
+  async function loadCustomers(page = 0) {
+    currentPage = page;
+    const keyword = document.getElementById('searchInput').value.trim();
+    try {
+      const res = await SmartBillAPI.get(`/customers?keyword=${encodeURIComponent(keyword)}&page=${page}&size=${PAGE_SIZE}`);
+      renderCustomers(res.data);
+    } catch (err) {
+      showToast(err.message || 'Failed to load customers', 'error');
+    }
+  }
+
+  function renderCustomers(pageData) {
+    const body = document.getElementById('customersBody');
+    const empty = document.getElementById('customersEmpty');
+    const customers = pageData.content || [];
+
+    if (customers.length === 0) {
+      body.innerHTML = '';
+      empty.classList.remove('d-none');
+      document.getElementById('paginationBar').innerHTML = '';
+      return;
+    }
+    empty.classList.add('d-none');
+
+    body.innerHTML = customers.map(c => `
+      <tr>
+        <td class="fw-semibold">${c.customerName}</td>
+        <td class="text-mono">${c.mobileNumber}</td>
+        <td class="text-mono">${c.gstNumber || '-'}</td>
+        <td class="text-mono ${Number(c.outstandingBalance) > 0 ? 'text-danger fw-semibold' : ''}">${formatCurrency(c.outstandingBalance)}</td>
+        <td class="text-end">
+          <button class="btn btn-sm btn-light border me-1" onclick='openEditModal(${JSON.stringify(c).replace(/'/g, "&apos;")})'><i class="bi bi-pencil"></i></button>
+          <button class="btn btn-sm btn-light border" onclick="deleteCustomer(${c.id})"><i class="bi bi-trash text-danger"></i></button>
+        </td>
+      </tr>`).join('');
+
+    renderPagination(pageData);
+  }
+
+  function renderPagination(pageData) {
+    const bar = document.getElementById('paginationBar');
+    const totalPages = pageData.totalPages || 1;
+    bar.innerHTML = `
+      <span style="font-size:12.5px;color:var(--sb-ink-500);">Page ${currentPage + 1} of ${totalPages} · ${pageData.totalElements || 0} customers</span>
+      <div class="btn-group">
+        <button class="btn btn-sm btn-light border" ${currentPage === 0 ? 'disabled' : ''} onclick="loadCustomers(${currentPage - 1})"><i class="bi bi-chevron-left"></i></button>
+        <button class="btn btn-sm btn-light border" ${currentPage + 1 >= totalPages ? 'disabled' : ''} onclick="loadCustomers(${currentPage + 1})"><i class="bi bi-chevron-right"></i></button>
+      </div>`;
+  }
+
+  function openCreateModal() {
+    document.getElementById('customerModalTitle').textContent = 'Add Customer';
+    document.getElementById('customerForm').reset();
+    document.getElementById('customerId').value = '';
+    customerModal.show();
+  }
+
+  function openEditModal(c) {
+    document.getElementById('customerModalTitle').textContent = 'Edit Customer';
+    document.getElementById('customerId').value = c.id;
+    document.getElementById('customerName').value = c.customerName;
+    document.getElementById('mobileNumber').value = c.mobileNumber;
+    document.getElementById('email').value = c.email || '';
+    document.getElementById('address').value = c.address || '';
+    document.getElementById('gstNumber').value = c.gstNumber || '';
+    customerModal.show();
+  }
+
+  document.getElementById('customerForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('customerId').value;
+    const payload = {
+      customerName: document.getElementById('customerName').value.trim(),
+      mobileNumber: document.getElementById('mobileNumber').value.trim(),
+      email: document.getElementById('email').value.trim() || null,
+      address: document.getElementById('address').value.trim() || null,
+      gstNumber: document.getElementById('gstNumber').value.trim() || null,
+    };
+    const btn = document.getElementById('customerSaveBtn');
+    btn.disabled = true;
+    try {
+      if (id) {
+        await SmartBillAPI.put(`/customers/${id}`, payload);
+        showToast('Customer updated', 'success');
+      } else {
+        await SmartBillAPI.post('/customers', payload);
+        showToast('Customer added', 'success');
+      }
+      customerModal.hide();
+      loadCustomers(currentPage);
+    } catch (err) {
+      showToast(err.message || 'Failed to save customer', 'error');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  async function deleteCustomer(id) {
+    if (!confirm('Remove this customer?')) return;
+    try {
+      await SmartBillAPI.delete(`/customers/${id}`);
+      showToast('Customer removed', 'success');
+      loadCustomers(currentPage);
+    } catch (err) {
+      showToast(err.message || 'Failed to delete customer', 'error');
+    }
+  }
+
+  let searchDebounce;
+  document.getElementById('searchInput').addEventListener('input', () => {
+    clearTimeout(searchDebounce);
+    searchDebounce = setTimeout(() => loadCustomers(0), 350);
+  });
+
+  loadCustomers();
+</script>
+</body>
+</html>

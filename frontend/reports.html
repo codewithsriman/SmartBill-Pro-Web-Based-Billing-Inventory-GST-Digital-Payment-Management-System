@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reports · SmartBill Pro</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+<link href="css/design-system.css" rel="stylesheet">
+</head>
+<body>
+
+<div class="app-shell">
+  <div id="sb-app-shell-mount"></div>
+
+  <main class="sb-main">
+    <header class="sb-topbar" id="sb-topbar-mount"></header>
+
+    <div class="sb-content">
+      <div class="alert alert-info d-flex align-items-start gap-2" style="font-size:13px;">
+        <i class="bi bi-info-circle mt-1"></i>
+        <div>
+          <strong>Sales Summary below is live</strong> (pulled from <code>GET /invoices</code>, the same endpoint Billing
+          uses). Product-wise, Customer-wise, GST, and Profit &amp; Loss reports, plus PDF/Excel export via OpenPDF/Apache
+          POI, need a dedicated <code>ReportController</code> — not built in this session. The <code>reports</code> table
+          in the schema is ready to log generated report metadata once that controller exists.
+        </div>
+      </div>
+
+      <div class="sb-card mb-3">
+        <div class="sb-card-header">
+          <h6 class="m-0 fw-bold">Sales Summary</h6>
+          <div class="d-flex gap-2">
+            <input type="date" class="form-control form-control-sm" id="fromDate">
+            <input type="date" class="form-control form-control-sm" id="toDate">
+            <button class="btn btn-sm btn-primary" onclick="loadInvoices()">Filter</button>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="table sb-table m-0">
+            <thead><tr><th>Invoice #</th><th>Customer</th><th>Date</th><th>Subtotal</th><th>GST</th><th>Total</th><th>Status</th></tr></thead>
+            <tbody id="reportBody"><tr><td colspan="7"><div class="skeleton" style="height:18px;"></div></td></tr></tbody>
+          </table>
+        </div>
+        <div class="sb-card-body border-top d-flex justify-content-between flex-wrap gap-2">
+          <div style="font-size:13px;color:var(--sb-ink-500);">
+            Totals (current page): <span class="fw-bold text-mono" id="totalsSummary">—</span>
+          </div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-outline-secondary" disabled title="Requires ReportController + Apache POI export endpoint"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
+            <button class="btn btn-sm btn-outline-secondary" disabled title="Requires ReportController + OpenPDF export endpoint"><i class="bi bi-file-earmark-pdf"></i> Export PDF</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-3">
+        <div class="col-md-3"><div class="sb-card sb-card-body text-center py-4"><i class="bi bi-box-seam" style="font-size:20px;color:var(--sb-primary);"></i><div class="fw-semibold mt-2" style="font-size:13px;">Product Wise Sales</div></div></div>
+        <div class="col-md-3"><div class="sb-card sb-card-body text-center py-4"><i class="bi bi-people" style="font-size:20px;color:var(--sb-accent);"></i><div class="fw-semibold mt-2" style="font-size:13px;">Customer Wise Sales</div></div></div>
+        <div class="col-md-3"><div class="sb-card sb-card-body text-center py-4"><i class="bi bi-percent" style="font-size:20px;color:var(--sb-success);"></i><div class="fw-semibold mt-2" style="font-size:13px;">GST Report</div></div></div>
+        <div class="col-md-3"><div class="sb-card sb-card-body text-center py-4"><i class="bi bi-graph-up-arrow" style="font-size:20px;color:#7C3AED;"></i><div class="fw-semibold mt-2" style="font-size:13px;">Profit &amp; Loss</div></div></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/api-client.js"></script>
+<script src="js/app-shell.js"></script>
+<script>
+  requireAuth();
+  renderAppShell('reports');
+  renderTopbar('Reports & Analytics', 'Sales summary and exports');
+
+  async function loadInvoices() {
+    try {
+      const res = await SmartBillAPI.get('/invoices?size=50');
+      let invoices = res.data.content || [];
+
+      const from = document.getElementById('fromDate').value;
+      const to = document.getElementById('toDate').value;
+      if (from) invoices = invoices.filter(i => i.invoiceDate >= from);
+      if (to) invoices = invoices.filter(i => i.invoiceDate <= to);
+
+      renderReport(invoices);
+    } catch (err) {
+      showToast(err.message || 'Failed to load report data', 'error');
+    }
+  }
+
+  function renderReport(invoices) {
+    const body = document.getElementById('reportBody');
+    if (invoices.length === 0) {
+      body.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">No invoices in this range</td></tr>`;
+      document.getElementById('totalsSummary').textContent = '—';
+      return;
+    }
+
+    const statusMap = { PAID: 'paid', PENDING: 'pending', PARTIAL: 'partial' };
+    body.innerHTML = invoices.map(inv => `
+      <tr>
+        <td class="text-mono fw-semibold">${inv.invoiceNumber}</td>
+        <td>${inv.customerName || 'Walk-in'}</td>
+        <td>${formatDate(inv.invoiceDate)}</td>
+        <td class="text-mono">${formatCurrency(inv.subtotal)}</td>
+        <td class="text-mono">${formatCurrency(inv.gstTotal)}</td>
+        <td class="text-mono fw-semibold">${formatCurrency(inv.grandTotal)}</td>
+        <td><span class="sb-badge ${statusMap[inv.paymentStatus] || 'draft'}">${inv.paymentStatus}</span></td>
+      </tr>`).join('');
+
+    const totalSales = invoices.reduce((s, i) => s + Number(i.grandTotal), 0);
+    const totalGst = invoices.reduce((s, i) => s + Number(i.gstTotal), 0);
+    document.getElementById('totalsSummary').textContent =
+      `${formatCurrency(totalSales)} sales · ${formatCurrency(totalGst)} GST · ${invoices.length} invoices`;
+  }
+
+  loadInvoices();
+</script>
+</body>
+</html>
