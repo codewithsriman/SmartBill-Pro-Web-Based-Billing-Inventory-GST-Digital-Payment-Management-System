@@ -1,25 +1,34 @@
 # SmartBill Pro — Billing, Inventory & GST Management System
 
-A web-based billing and inventory management system built with Spring Boot 3 / Java 21 (backend) and
-Bootstrap 5 / vanilla JS (frontend).
+A billing, inventory, and GST management system for Indian small businesses. Spring Boot 3 / Java 21
+backend, MySQL database, JWT authentication, Bootstrap 5 + vanilla JS frontend, QR/barcode scanning,
+PDF invoice generation, and Razorpay online payments.
 
-## ⚠️ Status: this is a working thin slice, not the full spec
+**This has been built incrementally and confirmed running end-to-end** (login → dashboard → billing →
+Razorpay payment) on a real Windows machine. The setup steps below are the actual commands that worked,
+not theoretical ones — including the Windows/PowerShell-specific gotchas that came up along the way.
 
-This build covers **Authentication, Dashboard, New Bill → Scanner → Add Items → Billing → Share Invoice,
-Product Management, and Customer Management** end-to-end — real Spring Boot services, a real MySQL schema,
-JWT security, GST math, and PDF invoice generation, plus a fully wired frontend for all of those flows.
+---
 
-**Not built in this session** (UI scaffolding exists, but no backend controller/service yet):
-Purchase Management, Bank Accounts, GST Report exports, Reports' Excel/PDF export, WhatsApp/Email/SMS
-auto-sending (these need third-party API credentials), and Forgot Password (needs an email provider).
-Each relevant frontend page says exactly what's missing and which existing controller to copy the pattern
-from (e.g. `CustomerController`) to finish it.
+## What's actually working
 
-**I was not able to compile or run this backend in my own sandbox.** My build environment only allows
-network access to a small domain allowlist for security reasons, and Maven Central isn't on it — so I
-could install Maven itself but not download Spring Boot/Hibernate/etc. to actually compile. I wrote the
-code carefully, but you should expect to fix a handful of typos/import issues on first `mvn compile`.
-**Please paste me any compiler errors and I'll fix them immediately.**
+- **Auth**: signup, login, JWT access + refresh tokens, BCrypt password hashing, role-based access
+  (Admin / Manager / Cashier)
+- **Dashboard**: live stat cards, Chart.js daily/weekly/monthly sales charts, transaction search
+- **Billing flow**: New Bill → Scanner (camera-based barcode/QR via `html5-qrcode`) → Add Items →
+  Billing (GST calculation, discount, payment) → Share Invoice (PDF download/print)
+- **Payments**: Cash, Credit, and Razorpay online payments (UPI/Cards/Netbanking via Checkout, plus a
+  standalone scannable QR code option) — see [Payments](#payments-razorpay) below for mode-specific notes
+- **Products**: full CRUD, auto-generated barcodes, auto-generated QR codes (ZXing), low-stock flagging
+- **Customers**: full CRUD, outstanding balance tracking
+- **PDF invoices**: generated server-side with OpenPDF, downloadable/printable
+
+## What's scaffolded but not wired up
+
+Purchases, Bank Accounts, GST report exports, and Reports' Excel/PDF export have frontend pages but no
+backend controller yet. WhatsApp/Email/SMS auto-sending and Forgot Password need third-party
+credentials (Twilio, an email provider) you'd supply separately — the UI is ready to call those once a
+controller exists. Each relevant page in the app says exactly what's missing.
 
 ---
 
@@ -27,122 +36,191 @@ code carefully, but you should expect to fix a handful of typos/import issues on
 
 ```
 smartbill-pro/
-├── backend/                   # Spring Boot 3 / Java 21 REST API
+├── backend/                          # Spring Boot 3 / Java 21 REST API
 │   ├── pom.xml
 │   └── src/main/java/com/smartbillpro/backend/
-│       ├── config/            # Security + static file serving config
-│       ├── controller/        # REST controllers
-│       ├── dto/                # Request/response DTOs, organized by feature
-│       ├── entity/             # JPA entities
-│       ├── exception/          # Custom exceptions + global handler
-│       ├── repository/         # Spring Data JPA repositories
-│       ├── security/           # JWT provider, filter, UserDetails
-│       ├── service/            # Business logic
-│       └── util/               # GST calculator, invoice number generator
+│       ├── config/                   # Security, static file serving
+│       ├── controller/               # REST controllers
+│       ├── dto/                      # Request/response DTOs by feature
+│       ├── entity/                   # JPA entities
+│       ├── exception/                # Custom exceptions + global handler
+│       ├── repository/               # Spring Data JPA repositories
+│       ├── security/                 # JWT provider, filter, UserDetails
+│       ├── service/                  # Business logic (incl. Razorpay)
+│       └── util/                     # GST calculator, invoice number generator
 ├── database/
-│   └── schema.sql              # Full MySQL schema + seed data
-├── frontend/                   # Static HTML/CSS/JS (Bootstrap 5 + Chart.js)
-│   ├── *.html                  # One file per page
+│   └── schema.sql                    # Full MySQL schema + seed data
+├── frontend/                         # Static HTML/CSS/JS
+│   ├── *.html                        # One file per page
 │   ├── css/design-system.css
-│   └── js/                     # api-client.js, app-shell.js, bill-draft.js
-└── README.md                   # You are here
+│   └── js/                           # api-client.js, app-shell.js, bill-draft.js
+└── README.md
 ```
 
 ---
 
-## Setup Instructions
+## Prerequisites
+
+- **Java 21** (Temurin recommended) — if you also have a newer JDK installed (e.g. Java 25), see the
+  [JAVA_HOME note](#java_home-if-you-have-multiple-jdks-installed) below, it matters.
+- **Maven 3.8+**
+- **MySQL 8 or 9** running locally (this was built and tested against MySQL Server 9.7 on Windows)
+- A static file server for the frontend — Python's built-in one is easiest if available
+
+Check what you have:
+```powershell
+java -version
+mvn -version
+```
+
+---
+
+## Setup — step by step
 
 ### 1. Database
 
-```bash
-mysql -u root -p < database/schema.sql
+Run the schema (adjust the MySQL path if yours differs):
+
+```powershell
+cd smartbill-pro
+Get-Content database\schema.sql | & "C:\Program Files\MySQL\MySQL Server 9.7\bin\mysql.exe" -u root -p
 ```
 
-This creates the `smartbill_pro` database, all 13+ tables, and seeds:
+> **Windows/PowerShell note:** PowerShell does **not** support `<` for input redirection like bash does.
+> Always pipe through `Get-Content file.sql | mysql.exe ...` instead of `mysql.exe ... < file.sql`.
+
+This creates the `smartbill_pro` database, ~16 tables, and seeds:
 - 3 roles (Admin, Manager, Cashier)
-- 1 admin user — **username: `admin`, password: `Admin@123`** (change immediately after first login)
-- GST slabs (0/5/12/18/28%)
-- A default "Cash Counter" account and company settings row
+- 1 admin user — **username: `admin`, password: `Admin@123`**
+- GST slabs, a default Cash Counter account, company settings
 
-### 2. Backend
+Verify it landed:
+```powershell
+& "C:\Program Files\MySQL\MySQL Server 9.7\bin\mysql.exe" -u root -p -e "USE smartbill_pro; SHOW TABLES;"
+```
 
-Requires **Java 21** and **Maven 3.8+**.
+### 2. `JAVA_HOME` (if you have multiple JDKs installed)
 
-```bash
+If `mvn -version` reports a different Java version than `java -version` does, Maven is picking up the
+wrong JDK via `JAVA_HOME`. Fix it for the current terminal session:
+
+```powershell
+Get-ChildItem "C:\Program Files\Eclipse Adoptium" -Directory   # find your JDK 21 folder name
+$env:JAVA_HOME = "C:\Program Files\Eclipse Adoptium\jdk-21.0.5.11-hotspot"   # adjust to your actual path
+$env:Path = "$env:JAVA_HOME\bin;" + $env:Path
+mvn -version   # confirm it now reports Java 21
+```
+
+This only lasts for the current terminal window — repeat it (or set `JAVA_HOME` permanently via System
+Properties) each time you open a fresh terminal to build/run the backend.
+
+### 3. Backend environment variables
+
+In the same terminal:
+
+```powershell
 cd backend
-# Set your real DB password and a long random JWT secret before running in anything beyond local dev:
-export DB_PASSWORD=your_mysql_password
-export JWT_SECRET=$(openssl rand -base64 48)
+$env:DB_PASSWORD = "your_mysql_root_password"
+$env:JWT_SECRET = -join ((48..57)+(65..90)+(97..122)|Get-Random -Count 64|%{[char]$_})
+$env:RAZORPAY_KEY_ID = "rzp_test_..."        # type your real key directly, see note below
+$env:RAZORPAY_KEY_SECRET = "..."             # same
+```
 
+> **Never share or paste real API keys/secrets into chat, files, or version control.** Type them
+> directly into your terminal. If a secret is ever pasted somewhere it shouldn't be, treat it as
+> compromised and regenerate it from the Razorpay Dashboard immediately.
+
+Razorpay keys are optional if you only plan to test Cash/Credit payments — the app falls back to a
+placeholder and only errors out when someone actually tries to use an online payment method.
+
+### 4. Build and run the backend
+
+```powershell
 mvn clean install
 mvn spring-boot:run
 ```
 
-The API will be available at `http://localhost:8080/api`. Health check: `GET /api/dashboard` (requires a
-JWT — log in via `/api/auth/login` first, or just open the frontend, which handles this for you).
-
-**If `mvn clean install` fails**, it's most likely either a missing semicolon/import I couldn't catch
-without a compiler, or a Lombok annotation-processing hiccup. Send me the error and I'll patch it.
-
-### 3. Frontend
-
-No build step — it's static HTML/CSS/JS. Two options:
-
-**Option A — quick local preview:**
-```bash
-cd frontend
-python3 -m http.server 5500
-# open http://localhost:5500/login.html
+Success looks like:
+```
+Tomcat started on port 8080 (http) with context path '/api'
+Started SmartBillProApplication in X.XXX seconds
 ```
 
-**Option B — any static file server** (VS Code Live Server, nginx, etc.) pointed at the `frontend/` folder.
+Leave this terminal running. Common failure points and fixes:
 
-By default the frontend calls the backend at `http://localhost:8080/api`. To point it elsewhere, set this
-before the other scripts load on each page (or edit directly in `js/api-client.js`):
-```html
-<script>window.SMARTBILL_API_BASE = 'https://your-api-host/api';</script>
+| Error | Cause | Fix |
+|---|---|---|
+| `Port 8080 was already in use` | A previous run didn't shut down cleanly | `Get-NetTCPConnection -LocalPort 8080 -State Listen`, then `Stop-Process -Id <PID> -Force` |
+| `Schema-validation: missing table [X]` | Database is out of sync with the entity classes | Re-check you ran the latest `schema.sql`, or run the specific `ALTER TABLE`/`CREATE TABLE` for what's missing |
+| Compile errors mentioning `cannot find symbol` for getters/setters/builders on your own classes | Usually a Lombok annotation-processing hiccup after a partial file edit | Re-check the file wasn't accidentally truncated; ask for the affected file in full |
+| `reference to Font is ambiguous` (or similar dual-import error) | Wildcard imports from two packages with a same-named class | Replace the wildcard import with an explicit one for just the class you need |
+
+### 5. Frontend
+
+In a **separate** terminal (keep the backend running):
+
+```powershell
+cd smartbill-pro\frontend
+python -m http.server 5500
 ```
 
-Also update `app.cors.allowed-origins` in `backend/src/main/resources/application.yml` to include
-whatever origin you're serving the frontend from.
+Open `http://localhost:5500/login.html` and sign in with `admin` / `Admin@123`.
 
-### 4. Log in
+By default the frontend calls the backend at `http://localhost:8080/api`. To point elsewhere, set
+`window.SMARTBILL_API_BASE` before `js/api-client.js` loads, and update
+`app.cors.allowed-origins` in `backend/src/main/resources/application.yml` to match.
 
-Open `login.html` → sign in with `admin` / `Admin@123` → you'll land on the Dashboard.
+---
+
+## Payments (Razorpay)
+
+Cash and Credit work with no external setup. Online methods (UPI, Cards, Netbanking, QR) go through
+Razorpay and have mode-specific behavior worth understanding before you test:
+
+| Mode | Checkout (Cards/Netbanking/Wallets) | UPI Intent / QR in Checkout | Standalone QR Code (own API) |
+|---|---|---|---|
+| **Test** (`rzp_test_...`) | ✅ Works with [Razorpay's documented test cards](https://razorpay.com/docs/payments/payment-gateway/web-integration/standard/integration-steps/) | ❌ Not rendered — Razorpay restricts this to live mode | ✅ Real QR image renders; scanning won't complete a real payment |
+| **Live** (`rzp_live_...`) | ✅ Real money moves | ✅ Fully functional | ✅ Fully functional |
+
+**On the Billing page**, selecting "QR Payment" shows a real scannable QR image generated via
+Razorpay's QR Code API, with a **Check Status** button to poll for payment (this app runs on
+`localhost`, which can't receive Razorpay's webhook push, so status is checked on-demand instead of
+pushed automatically).
+
+If QR code creation fails with an authorization-style error, the **QR Codes feature may need to be
+enabled on your Razorpay account** — this is a separate toggle from your API keys, requested via the
+Razorpay Dashboard or Support.
+
+The invoice's `amountPaid` and `PAID` status for any online payment always comes from the
+server-verified `payments` table record, never from client input — this is intentional, to prevent a
+tampered request from claiming a payment succeeded when it didn't.
 
 ---
 
 ## Architecture notes
 
-- **Auth**: JWT access token (24h) + refresh token (7d), BCrypt password hashing (strength 12), stateless
-  sessions, role-based access control via `@PreAuthorize` (Admin / Manager / Cashier). Self-signup always
-  gets Cashier role — role escalation must be done by an Admin (this is intentional, not an oversight, to
-  prevent privilege escalation via the public signup endpoint).
-- **GST math**: centralized in `util/GstCalculator.java` so every caller (billing, future reports, PDF)
-  rounds the same way (HALF_UP, 2 decimals). CGST/SGST is split 50/50 from the combined GST total for
-  intra-state sales; IGST is left at zero by default — wire in your own state-comparison logic in
-  `BillingService` if you need real inter-state invoicing.
-- **Stock**: deducted on invoice finalize, restored on invoice cancel. Draft invoices don't touch stock.
-- **Scanner**: uses `html5-qrcode` (camera-based, browser-only, no native app) — works on desktop, tablet,
-  and mobile browsers that support `getUserMedia`. Falls back gracefully to manual search if camera access
-  is denied or unavailable.
-- **QR codes**: generated server-side with ZXing on product creation, saved to `./uploads/qrcodes/` and
-  served via the `/uploads/**` static mapping in `WebConfig.java`.
-- **PDF invoices**: generated server-side with OpenPDF in `InvoicePdfService.java`, streamed directly for
-  download/print — no disk write needed for the download flow (though `generateAndSave()` is available if
-  you want to persist them for the Share Invoice module).
-- **Frontend state**: the in-progress bill (New Bill → Scanner → Add Items → Billing) is held in
-  `sessionStorage` via `js/bill-draft.js`, so it survives page navigation but clears on tab close — by
-  design, so an abandoned bill doesn't leak into the next session.
+- **GST math** is centralized in `util/GstCalculator.java` (HALF_UP rounding, 2 decimals) so billing,
+  PDFs, and any future reports stay consistent. CGST/SGST is split 50/50 from the combined GST total for
+  intra-state sales; IGST defaults to zero — add real state-comparison logic in `BillingService` if you
+  need inter-state invoicing.
+- **Stock** is deducted on invoice finalize, restored on cancel. Drafts don't touch inventory.
+- **Self-signup always gets the Cashier role** — this is intentional, not an oversight, to prevent
+  privilege escalation via the public signup endpoint. Promote users to Manager/Admin manually.
+- **Scanner** uses `html5-qrcode` (browser camera, no native app needed), falls back gracefully to
+  manual product search if camera access is denied or unavailable.
+- **In-progress bill state** (New Bill → Scanner → Add Items → Billing) lives in `sessionStorage` via
+  `js/bill-draft.js` — survives page navigation, clears on tab close, by design.
+
+---
 
 ## Known gaps / next steps
 
-1. Run `mvn clean install` and send me any compiler errors.
-2. Build `PurchaseController` / `BankAccountController` / `ReportController` following the
-   `CustomerController` pattern — the DB schema and frontend UI are ready for all three.
-3. Wire up Apache POI (Excel) and OpenPDF (PDF) report exports in the new `ReportController`.
-4. Configure an email provider (SMTP/SendGrid) to enable Forgot Password and automated invoice emailing.
-5. Configure Twilio (or similar) for automated SMS, and the WhatsApp Business API for automated WhatsApp
-   sending — both currently open the user's own app with a prefilled message instead.
-6. Consider adding Flyway/Liquibase for schema migrations instead of a single `schema.sql` once this goes
-   to a real team environment.
+1. Build `PurchaseController`, `BankAccountController`, and `ReportController` following the
+   `CustomerController` pattern — schema and frontend are ready for all three.
+2. Wire up Apache POI (Excel) and OpenPDF (PDF) exports in the new `ReportController`.
+3. Configure an email provider to enable Forgot Password and automated invoice emailing.
+4. Configure Twilio (SMS) and the WhatsApp Business API for automated sending — currently these open
+   the user's own SMS/WhatsApp/email app with a prefilled message instead of sending automatically.
+5. For production: move off a single `schema.sql` to Flyway/Liquibase migrations, set up real webhook
+   handling for Razorpay (requires a public URL — a tunnel like ngrok works for staging), and rotate the
+   JWT secret and DB credentials out of plain environment variables into a proper secrets manager.
