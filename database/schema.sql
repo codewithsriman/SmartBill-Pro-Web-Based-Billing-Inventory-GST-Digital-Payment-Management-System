@@ -163,7 +163,7 @@ CREATE TABLE invoices (
     grand_total         DECIMAL(12,2) NOT NULL DEFAULT 0.00,
     amount_paid         DECIMAL(12,2) NOT NULL DEFAULT 0.00,
     balance_due         DECIMAL(12,2) NOT NULL DEFAULT 0.00,
-    payment_method      ENUM('CASH','CREDIT','UPI','QR','DEBIT_CARD','CREDIT_CARD') NOT NULL DEFAULT 'CASH',
+    payment_method      ENUM('CASH','CREDIT','UPI') NOT NULL DEFAULT 'CASH',
     payment_status      ENUM('PAID','PARTIAL','PENDING') NOT NULL DEFAULT 'PENDING',
     status              ENUM('DRAFT','FINALIZED','CANCELLED') NOT NULL DEFAULT 'DRAFT',
     notes               VARCHAR(500),
@@ -281,25 +281,36 @@ CREATE TABLE reports (
 ) ENGINE=InnoDB;
 
 -- ============================================================================
--- 14. PAYMENTS (online payment transactions via Razorpay; also logs offline payments)
+-- 14. PAYMENTS (Cash / Credit / UPI-QR payment records)
 -- ============================================================================
 CREATE TABLE payments (
     id                      BIGINT AUTO_INCREMENT PRIMARY KEY,
-    invoice_id              BIGINT NULL,                      -- NULL until invoice is generated (online flow creates payment before invoice)
+    invoice_id              BIGINT NULL,                      -- NULL until invoice is generated (UPI flow creates the payment record before the invoice)
     amount                  DECIMAL(12,2) NOT NULL,
-    payment_method          ENUM('CASH','CREDIT','UPI','QR','DEBIT_CARD','CREDIT_CARD') NOT NULL,
+    payment_method          ENUM('CASH','CREDIT','UPI') NOT NULL,
     payment_status          ENUM('PENDING','PAID','FAILED') NOT NULL DEFAULT 'PENDING',
-    transaction_id          VARCHAR(100),                     -- Razorpay payment ID once captured (rzp_payment_id)
-    razorpay_order_id       VARCHAR(100),
-    razorpay_payment_id     VARCHAR(100),
-    razorpay_signature      VARCHAR(255),                     -- stored for audit trail; verification happens server-side at capture time
+    transaction_reference   VARCHAR(100),                     -- optional, cashier-entered UPI reference after confirming payment
     created_by              BIGINT,
     created_at              TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at              TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_payments_invoice FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE SET NULL,
     CONSTRAINT fk_payments_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
-    INDEX idx_payments_razorpay_order (razorpay_order_id),
     INDEX idx_payments_invoice (invoice_id)
+) ENGINE=InnoDB;
+
+-- ============================================================================
+-- 15. SHOP SETTINGS (single-row shop profile + UPI QR code used on the Billing page)
+-- ============================================================================
+CREATE TABLE shop_settings (
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+    shop_name       VARCHAR(200) NOT NULL,
+    shop_address    VARCHAR(255),
+    mobile_number   VARCHAR(20),
+    gst_number      VARCHAR(20),
+    upi_id          VARCHAR(100),
+    qr_code_image   VARCHAR(255),                             -- relative path under /uploads/shop-qr/
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
 SET FOREIGN_KEY_CHECKS = 1;
@@ -335,6 +346,11 @@ INSERT INTO gst_settings (gst_slab_name, cgst_percentage, sgst_percentage, igst_
 
 INSERT INTO company_settings (company_name, company_gst_number, company_address, company_phone, company_email, invoice_prefix) VALUES
     ('Your Company Name', '29ABCDE1234F1Z5', '123 Business Street, City, State, 560001', '+91 9999999999', 'billing@yourcompany.com', 'INV');
+
+-- Seed row for shop_settings so the Shop Settings page has something to edit immediately.
+-- Update shop_name, upi_id, and upload a real QR code via the Shop Settings page after first login.
+INSERT INTO shop_settings (shop_name, shop_address, mobile_number, gst_number, upi_id) VALUES
+    ('Your Shop Name', '123 Business Street, City, State, 560001', '+91 9999999999', '29ABCDE1234F1Z5', 'yourshop@upi');
 
 INSERT INTO bank_accounts (account_name, account_type, opening_balance, current_balance) VALUES
     ('Cash Counter', 'CASH', 0.00, 0.00);

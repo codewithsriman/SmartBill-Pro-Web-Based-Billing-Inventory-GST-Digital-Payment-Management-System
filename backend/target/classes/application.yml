@@ -40,11 +40,9 @@ app:
     qr-code-dir: ./uploads/qrcodes
     invoice-pdf-dir: ./uploads/invoices
     logo-dir: ./uploads/logos
+    shop-qr-dir: ./uploads/shop-qr
   invoice:
     default-prefix: INV
-  razorpay:
-    key-id: ${RAZORPAY_KEY_ID:rzp_test_placeholder_key_id}
-    key-secret: ${RAZORPAY_KEY_SECRET:placeholder_key_secret}
 
 logging:
   level:

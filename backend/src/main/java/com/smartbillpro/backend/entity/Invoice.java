@@ -121,7 +121,7 @@ public class Invoice {
     }
 
     public enum PaymentMethod {
-        CASH, CREDIT, UPI, QR, DEBIT_CARD, CREDIT_CARD
+        CASH, CREDIT, UPI
     }
 
     public enum PaymentStatus {

@@ -28,7 +28,7 @@ public class BillingService {
     private final CustomerRepository customerRepository;
     private final CompanySettingsRepository companySettingsRepository;
     private final InvoiceNumberGenerator invoiceNumberGenerator;
-    private final RazorpayService razorpayService;
+    private final PaymentService paymentService;
 
     @Transactional
     public InvoiceResponse createInvoice(CreateInvoiceRequest request, Long createdByUserId) {
@@ -118,12 +118,12 @@ public class BillingService {
         BigDecimal grandTotal = subtotal.add(totalGst).subtract(invoice.getDiscountAmount());
         invoice.setGrandTotal(GstCalculator.round(grandTotal));
 
-        // For online (Razorpay) payments, the amount paid and PAID status come from the
+        // For UPI/QR payments, the amount paid and PAID status come from the
         // server-verified Payment record — never trust client-supplied amountPaid here, since
         // that would let a client claim "fully paid" without an actual verified transaction.
         Payment verifiedPayment = null;
         if (request.getPaymentId() != null) {
-            verifiedPayment = razorpayService.getVerifiedPaymentEntity(request.getPaymentId());
+            verifiedPayment = paymentService.getVerifiedPaymentEntity(request.getPaymentId());
             invoice.setAmountPaid(GstCalculator.round(verifiedPayment.getAmount()));
         } else {
             BigDecimal amountPaid = request.getAmountPaid() == null ? BigDecimal.ZERO : request.getAmountPaid();
@@ -148,7 +148,7 @@ public class BillingService {
         Invoice saved = invoiceRepository.save(invoice);
 
         if (verifiedPayment != null) {
-            razorpayService.linkPaymentToInvoice(verifiedPayment.getId(), saved);
+            paymentService.linkPaymentToInvoice(verifiedPayment.getId(), saved);
         }
 
         return toResponse(saved);

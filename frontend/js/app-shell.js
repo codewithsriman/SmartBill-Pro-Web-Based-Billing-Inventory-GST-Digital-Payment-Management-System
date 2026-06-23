@@ -16,6 +16,8 @@ const SB_NAV_ITEMS = [
   { href: 'bank-accounts.html', icon: 'bi-bank', label: 'Bank Accounts', key: 'bank-accounts' },
   { href: 'tax-management.html', icon: 'bi-percent', label: 'GST & Tax', key: 'tax-management' },
   { href: 'reports.html', icon: 'bi-bar-chart-fill', label: 'Reports', key: 'reports' },
+  { section: 'Settings' },
+  { href: 'shop-settings.html', icon: 'bi-shop', label: 'Shop Settings', key: 'shop-settings' },
 ];
 
 function renderAppShell(activeKey) {

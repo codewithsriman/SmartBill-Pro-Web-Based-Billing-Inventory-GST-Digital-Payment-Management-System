@@ -13,8 +13,8 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 public class PaymentStatusResponse {
     private Long paymentId;
-    private String paymentStatus;   // PENDING, PAID, FAILED
-    private String transactionId;   // Razorpay payment ID once captured
+    private String paymentStatus;       // PENDING, PAID, FAILED
+    private String transactionReference; // optional, cashier-entered after confirming a UPI/QR payment
     private BigDecimal amount;
     private String paymentMethod;
 }

@@ -6,6 +6,7 @@ D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\cont
 D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\controller\DashboardController.java
 D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\controller\PaymentController.java
 D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\controller\ProductController.java
+D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\controller\ShopSettingsController.java
 D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\dto\auth\ForgotPasswordRequest.java
 D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\dto\auth\JwtAuthResponse.java
 D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\dto\auth\LoginRequest.java
@@ -19,12 +20,13 @@ D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\dto\
 D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\dto\customer\CustomerRequest.java
 D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\dto\customer\CustomerResponse.java
 D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\dto\dashboard\DashboardResponse.java
-D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\dto\payment\CreateRazorpayOrderRequest.java
+D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\dto\payment\ConfirmUpiPaymentRequest.java
+D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\dto\payment\CreateUpiPaymentRequest.java
 D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\dto\payment\PaymentStatusResponse.java
-D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\dto\payment\RazorpayOrderResponse.java
-D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\dto\payment\VerifyRazorpayPaymentRequest.java
 D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\dto\product\ProductRequest.java
 D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\dto\product\ProductResponse.java
+D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\dto\shop\ShopSettingsRequest.java
+D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\dto\shop\ShopSettingsResponse.java
 D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\entity\Category.java
 D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\entity\CompanySettings.java
 D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\entity\Customer.java
@@ -33,6 +35,7 @@ D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\enti
 D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\entity\Payment.java
 D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\entity\Product.java
 D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\entity\Role.java
+D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\entity\ShopSettings.java
 D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\entity\User.java
 D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\exception\DuplicateResourceException.java
 D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\exception\GlobalExceptionHandler.java
@@ -46,6 +49,7 @@ D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\repo
 D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\repository\PaymentRepository.java
 D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\repository\ProductRepository.java
 D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\repository\RoleRepository.java
+D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\repository\ShopSettingsRepository.java
 D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\repository\UserRepository.java
 D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\security\CustomUserDetailsService.java
 D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\security\JwtAuthenticationEntryPoint.java
@@ -57,9 +61,10 @@ D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\serv
 D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\service\CustomerService.java
 D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\service\DashboardService.java
 D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\service\InvoicePdfService.java
+D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\service\PaymentService.java
 D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\service\ProductService.java
 D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\service\QrCodeService.java
-D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\service\RazorpayService.java
+D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\service\ShopSettingsService.java
 D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\SmartBillProApplication.java
 D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\util\GstCalculator.java
 D:\project_2.0\smartbill-pro\backend\src\main\java\com\smartbillpro\backend\util\InvoiceNumberGenerator.java

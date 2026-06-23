@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shop Settings · SmartBill Pro</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+<link href="css/design-system.css" rel="stylesheet">
+</head>
+<body>
+
+<div class="app-shell">
+  <div id="sb-app-shell-mount"></div>
+
+  <main class="sb-main">
+    <header class="sb-topbar" id="sb-topbar-mount"></header>
+
+    <div class="sb-content">
+      <div class="row g-3">
+
+        <div class="col-lg-7">
+          <div class="sb-card">
+            <div class="sb-card-header"><h6 class="m-0 fw-bold">Shop Details</h6></div>
+            <div class="sb-card-body">
+              <form id="shopSettingsForm">
+                <div class="mb-3">
+                  <label class="form-label">Shop Name</label>
+                  <input type="text" class="form-control" id="shopName" required>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Shop Address</label>
+                  <textarea class="form-control" id="shopAddress" rows="2"></textarea>
+                </div>
+                <div class="row g-3 mb-3">
+                  <div class="col-6">
+                    <label class="form-label">Mobile Number</label>
+                    <input type="tel" class="form-control" id="mobileNumber">
+                  </div>
+                  <div class="col-6">
+                    <label class="form-label">GST Number</label>
+                    <input type="text" class="form-control" id="gstNumber">
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">UPI ID</label>
+                  <input type="text" class="form-control" id="upiId" placeholder="yourshop@upi" required>
+                  <div class="form-text" style="font-size:11.5px;">Shown to customers on the Billing page when they select UPI / QR Payment.</div>
+                </div>
+                <button type="submit" class="btn btn-primary" id="saveSettingsBtn">
+                  <i class="bi bi-check-lg"></i> Save Shop Details
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-5">
+          <div class="sb-card">
+            <div class="sb-card-header"><h6 class="m-0 fw-bold">Shop QR Code</h6></div>
+            <div class="sb-card-body text-center">
+              <div id="qrPreviewWrap" class="d-inline-block p-3 bg-white rounded mb-3 d-none" style="border:1px solid var(--sb-border);">
+                <img id="qrPreviewImage" src="" alt="Shop QR Code" style="width:200px;height:200px;display:block;">
+              </div>
+              <div id="qrEmptyState" class="sb-empty-state">
+                <i class="bi bi-qr-code"></i>
+                <div class="fw-semibold">No QR code uploaded yet</div>
+                <div style="font-size:13px;">Upload your shop's UPI QR code (from any UPI app's "My QR Code" screen) so customers can scan it directly from the Billing page.</div>
+              </div>
+
+              <input type="file" id="qrFileInput" accept="image/*" class="d-none">
+              <button type="button" class="btn btn-outline-primary w-100" id="uploadQrBtn">
+                <i class="bi bi-upload"></i> Upload QR Code
+              </button>
+            </div>
+          </div>
+
+          <div class="alert alert-info mt-3" style="font-size:12.5px;">
+            <i class="bi bi-info-circle"></i> This is a <strong>static</strong> QR code — the same one customers scan for any
+            amount. The Billing page displays the bill total separately above it, so the customer enters that amount manually
+            in their UPI app before paying.
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/api-client.js"></script>
+<script src="js/app-shell.js"></script>
+<script>
+  requireAuth();
+  renderAppShell('shop-settings');
+  renderTopbar('Shop Settings', 'Shop profile and UPI QR code used during billing');
+
+  async function loadSettings() {
+    try {
+      const res = await SmartBillAPI.get('/shop-settings');
+      const s = res.data;
+      document.getElementById('shopName').value = s.shopName || '';
+      document.getElementById('shopAddress').value = s.shopAddress || '';
+      document.getElementById('mobileNumber').value = s.mobileNumber || '';
+      document.getElementById('gstNumber').value = s.gstNumber || '';
+      document.getElementById('upiId').value = s.upiId || '';
+
+      if (s.qrCodeImageUrl) {
+        document.getElementById('qrPreviewImage').src = SmartBillAPI.BASE_URL.replace('/api', '') + s.qrCodeImageUrl;
+        document.getElementById('qrPreviewWrap').classList.remove('d-none');
+        document.getElementById('qrEmptyState').classList.add('d-none');
+      }
+    } catch (err) {
+      showToast(err.message || 'Failed to load shop settings', 'error');
+    }
+  }
+
+  document.getElementById('shopSettingsForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const payload = {
+      shopName: document.getElementById('shopName').value.trim(),
+      shopAddress: document.getElementById('shopAddress').value.trim() || null,
+      mobileNumber: document.getElementById('mobileNumber').value.trim() || null,
+      gstNumber: document.getElementById('gstNumber').value.trim() || null,
+      upiId: document.getElementById('upiId').value.trim(),
+    };
+    const btn = document.getElementById('saveSettingsBtn');
+    btn.disabled = true;
+    try {
+      await SmartBillAPI.put('/shop-settings', payload);
+      showToast('Shop details saved', 'success');
+    } catch (err) {
+      showToast(err.message || 'Failed to save shop details', 'error');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  document.getElementById('uploadQrBtn').addEventListener('click', () => {
+    document.getElementById('qrFileInput').click();
+  });
+
+  document.getElementById('qrFileInput').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const btn = document.getElementById('uploadQrBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Uploading…';
+
+    try {
+      const token = SmartBillAPI.getAccessToken();
+      const res = await fetch(`${SmartBillAPI.BASE_URL}/shop-settings/qr-code`, {
+        method: 'POST',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+        body: formData
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message || 'Upload failed');
+
+      document.getElementById('qrPreviewImage').src = SmartBillAPI.BASE_URL.replace('/api', '') + json.data.qrCodeImageUrl;
+      document.getElementById('qrPreviewWrap').classList.remove('d-none');
+      document.getElementById('qrEmptyState').classList.add('d-none');
+      showToast('QR code uploaded', 'success');
+    } catch (err) {
+      showToast(err.message || 'Failed to upload QR code', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-upload"></i> Upload QR Code';
+      e.target.value = '';
+    }
+  });
+
+  loadSettings();
+</script>
+</body>
+</html>

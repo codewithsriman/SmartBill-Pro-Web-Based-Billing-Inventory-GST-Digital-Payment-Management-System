@@ -33,7 +33,7 @@ public class CreateInvoiceRequest {
     private BigDecimal discountAmount = BigDecimal.ZERO;
 
     @NotNull(message = "Payment method is required")
-    private String paymentMethod; // CASH, CREDIT, UPI, QR, DEBIT_CARD, CREDIT_CARD
+    private String paymentMethod; // CASH, CREDIT, UPI
 
     @NotNull(message = "Amount paid is required (use 0 for fully pending)")
     private BigDecimal amountPaid = BigDecimal.ZERO;
@@ -43,7 +43,7 @@ public class CreateInvoiceRequest {
     /** true = finalize and deduct stock immediately, false = save as draft without stock impact */
     private boolean finalize = true;
 
-    /** Set when this invoice is being generated after a successful online (Razorpay) payment —
+    /** Set when this invoice is being generated after a confirmed UPI/QR payment —
      *  links the invoice back to the payments row and copies its captured amount/status across. */
     private Long paymentId;
 

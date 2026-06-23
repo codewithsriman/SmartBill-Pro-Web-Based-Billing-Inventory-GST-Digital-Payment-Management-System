@@ -23,8 +23,8 @@ public class Payment {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /** Null until the invoice is generated — the online-payment flow creates the
-     *  Razorpay order/payment before an invoice exists, then links it on success. */
+    /** Null until the invoice is generated — the UPI/QR flow creates a pending payment
+     *  record before an invoice exists, then links it once the cashier confirms payment. */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "invoice_id")
     private Invoice invoice;
@@ -41,17 +41,10 @@ public class Payment {
     @Builder.Default
     private Status paymentStatus = Status.PENDING;
 
-    @Column(name = "transaction_id", length = 100)
-    private String transactionId;
-
-    @Column(name = "razorpay_order_id", length = 100)
-    private String razorpayOrderId;
-
-    @Column(name = "razorpay_payment_id", length = 100)
-    private String razorpayPaymentId;
-
-    @Column(name = "razorpay_signature", length = 255)
-    private String razorpaySignature;
+    /** Optional reference the cashier types in after confirming a UPI/QR payment
+     *  (e.g. the last few digits of the UPI transaction ID shown on the customer's phone). */
+    @Column(name = "transaction_reference", length = 100)
+    private String transactionReference;
 
     @Column(name = "created_by")
     private Long createdBy;
