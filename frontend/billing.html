@@ -82,81 +82,44 @@
                 <label class="form-label" style="font-size:11.5px;text-transform:uppercase;letter-spacing:0.04em;color:var(--sb-ink-500);">Online Payments</label>
                 <div class="row g-2 mb-3" id="onlineMethodGroup"></div>
 
-                <!-- CASH: manual amount entry, change calculation -->
-                <div id="cashSection" class="d-none">
+                <!-- Offline: manual amount entry (Cash) -->
+                <div id="offlineAmountSection">
                   <label class="form-label">Amount Paid</label>
                   <input type="number" class="form-control mb-2" id="amountPaidInput" min="0" step="0.01" value="0">
                   <div class="form-check mb-2">
                     <input class="form-check-input" type="checkbox" id="markFullyPaid">
                     <label class="form-check-label" style="font-size:13px;">Mark as fully paid</label>
                   </div>
-                  <div id="changeDueRow" class="d-none d-flex justify-content-between mb-2 p-2" style="font-size:13px;background:var(--sb-success-light);border-radius:8px;">
-                    <span class="fw-semibold" style="color:var(--sb-success);">Change to return</span>
-                    <span class="text-mono fw-bold" id="changeDueAmount" style="color:var(--sb-success);">₹0.00</span>
-                  </div>
                 </div>
 
-                <!-- CREDIT: due amount, always pending -->
-                <div id="creditSection" class="d-none p-3" style="background:var(--sb-warning-light);border-radius:10px;">
-                  <div class="d-flex justify-content-between mb-1" style="font-size:13px;">
-                    <span class="text-muted">Due Amount</span>
-                    <span class="text-mono fw-bold" id="creditDueAmount">₹0.00</span>
-                  </div>
-                  <div class="d-flex justify-content-between" style="font-size:13px;">
-                    <span class="text-muted">Payment Status</span>
-                    <span class="sb-badge pending">PENDING</span>
-                  </div>
-                  <div class="mt-2" style="font-size:12px;color:var(--sb-ink-500);">
-                    <i class="bi bi-info-circle"></i> Invoice can still be generated — amount is tracked as outstanding on the customer's account.
-                  </div>
-                </div>
-
-                <!-- UPI / QR: shop QR code + manual cashier confirmation -->
-                <div id="upiSection" class="d-none">
-                  <div class="p-3 text-center" style="background:var(--sb-ink-100);border-radius:10px;">
-                    <div class="fw-bold mb-3" style="font-size:14px;">Scan &amp; Pay</div>
-
-                    <div id="shopQrWrap" class="d-inline-block p-2 bg-white rounded mb-3" style="border:1px solid var(--sb-border);">
-                      <img id="shopQrImage" src="" alt="Shop QR Code" style="width:200px;height:200px;display:block;">
+                <!-- Online: Razorpay payment panel -->
+                <div id="razorpayPanel" class="d-none">
+                  <div class="p-3" style="background:var(--sb-ink-100);border-radius:10px;">
+                    <div class="d-flex justify-content-between mb-2" style="font-size:13px;">
+                      <span class="text-muted">Selected Method</span>
+                      <span class="fw-semibold" id="rzSelectedMethod">—</span>
                     </div>
-                    <div id="noShopQrMessage" class="alert alert-warning d-none" style="font-size:12.5px;text-align:left;">
-                      <i class="bi bi-exclamation-triangle"></i> No QR code uploaded yet. Go to
-                      <a href="shop-settings.html">Shop Settings</a> to upload your shop's UPI QR code.
+                    <div class="d-flex justify-content-between mb-2" style="font-size:13px;">
+                      <span class="text-muted">Payment Status</span>
+                      <span class="sb-badge pending" id="rzPaymentStatus">PENDING</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-3" style="font-size:13px;">
+                      <span class="text-muted">Transaction ID</span>
+                      <span class="text-mono" id="rzTransactionId" style="font-size:12px;">Not Generated</span>
                     </div>
 
-                    <div class="text-start mb-3" style="font-size:13px;">
-                      <div class="d-flex justify-content-between mb-1">
-                        <span class="text-muted">Shop Name</span>
-                        <span class="fw-semibold" id="upiShopName">—</span>
-                      </div>
-                      <div class="d-flex justify-content-between mb-1">
-                        <span class="text-muted">UPI ID</span>
-                        <span class="text-mono fw-semibold" id="upiShopUpiId">—</span>
-                      </div>
-                      <div class="d-flex justify-content-between mb-1">
-                        <span class="text-muted">Amount To Pay</span>
-                        <span class="text-mono fw-bold" id="upiAmountToPay" style="font-size:16px;color:var(--sb-primary);">₹0.00</span>
-                      </div>
-                      <div class="d-flex justify-content-between">
-                        <span class="text-muted">Payment Status</span>
-                        <span class="sb-badge pending" id="upiPaymentStatus">Waiting For Payment</span>
-                      </div>
-                    </div>
-
-                    <div style="font-size:11.5px;color:var(--sb-ink-500);" class="mb-2">Customer scans this with Google Pay, PhonePe, Paytm, or BHIM</div>
-
-                    <div class="mb-2 text-start">
-                      <label class="form-label" style="font-size:12px;">UPI Reference Number <span class="fw-normal text-muted">(optional)</span></label>
-                      <input type="text" class="form-control form-control-sm" id="upiReferenceInput" placeholder="e.g. 234567890123">
-                    </div>
-
-                    <button class="btn btn-primary w-100" id="confirmUpiPaymentBtn">
-                      <i class="bi bi-check-circle"></i> Confirm Payment
+                    <button class="btn btn-primary w-100" id="payWithRazorpayBtn">
+                      <i class="bi bi-credit-card-2-front"></i> Pay with Razorpay
                     </button>
 
-                    <div id="upiConfirmedBox" class="alert alert-success mt-3 mb-0 d-none" style="font-size:13px;">
-                      <div class="fw-bold mb-1"><i class="bi bi-check-circle-fill"></i> Payment Confirmed</div>
-                      <div id="upiConfirmedRef"></div>
+                    <div id="rzSuccessBox" class="alert alert-success mt-3 mb-0 d-none" style="font-size:13px;">
+                      <div class="fw-bold mb-1"><i class="bi bi-check-circle-fill"></i> Payment Successful</div>
+                      <div>Transaction ID: <span class="text-mono" id="rzSuccessTxnId"></span></div>
+                      <div>Amount: <span class="text-mono" id="rzSuccessAmount"></span></div>
+                    </div>
+                    <div id="rzFailBox" class="alert alert-danger mt-3 mb-0 d-none" style="font-size:13px;">
+                      <div class="fw-bold mb-1"><i class="bi bi-x-circle-fill"></i> Payment Failed</div>
+                      <div>Please try again.</div>
                     </div>
                   </div>
                 </div>
@@ -238,6 +201,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script src="js/api-client.js"></script>
 <script src="js/app-shell.js"></script>
 <script src="js/bill-draft.js"></script>
@@ -250,19 +214,21 @@
     { value: 'CREDIT', label: 'Credit', icon: 'bi-journal-text' },
   ];
   const ONLINE_METHODS = [
-    { value: 'UPI', label: 'UPI / QR Payment', icon: 'bi-qr-code' },
+    { value: 'UPI', label: 'UPI', icon: 'bi-phone' },
+    { value: 'QR', label: 'QR Payment', icon: 'bi-qr-code' },
+    { value: 'DEBIT_CARD', label: 'Debit Card', icon: 'bi-credit-card' },
+    { value: 'CREDIT_CARD', label: 'Credit Card', icon: 'bi-credit-card-2-front' },
   ];
   const ONLINE_VALUES = ONLINE_METHODS.map(m => m.value);
 
-  // Tracks the in-progress/confirmed UPI payment for this checkout session
-  let upiState = {
-    paymentId: null,
-    status: 'NONE',   // NONE | PENDING | PAID
-    amount: null,
-    transactionReference: null
+  // Tracks the in-progress/completed Razorpay payment for this checkout session
+  let razorpayState = {
+    paymentId: null,       // our internal payments.id
+    razorpayOrderId: null,
+    status: 'NONE',        // NONE | PENDING | PAID | FAILED
+    transactionId: null,
+    amount: null
   };
-
-  let shopSettings = null;
 
   const params = new URLSearchParams(window.location.search);
   let currentInvoiceId = null;
@@ -287,7 +253,7 @@
   }
 
   // ---------- CHECKOUT MODE ----------
-  async function initCheckout() {
+  function initCheckout() {
     const header = BillDraft.getHeader();
     const items = BillDraft.getItems();
     if (!header || items.length === 0) {
@@ -319,7 +285,7 @@
 
     const onlineGroup = document.getElementById('onlineMethodGroup');
     onlineGroup.innerHTML = ONLINE_METHODS.map(pm => `
-      <div class="col-12">
+      <div class="col-6">
         <input type="radio" class="btn-check" name="paymentMethod" id="pm_${pm.value}" value="${pm.value}">
         <label class="btn btn-outline-primary btn-sm w-100 d-flex flex-column align-items-center py-2" for="pm_${pm.value}" style="font-size:11.5px;">
           <i class="bi ${pm.icon}" style="font-size:16px;"></i>${pm.label}
@@ -340,22 +306,10 @@
       updatePaymentStatusPreview();
     });
 
-    document.getElementById('confirmUpiPaymentBtn').addEventListener('click', confirmUpiPayment);
-
-    // Load shop settings once up front so they're ready the moment UPI is selected
-    await loadShopSettings();
+    document.getElementById('payWithRazorpayBtn').addEventListener('click', startRazorpayPayment);
 
     onPaymentMethodChange();
     recalc();
-  }
-
-  async function loadShopSettings() {
-    try {
-      const res = await SmartBillAPI.get('/shop-settings');
-      shopSettings = res.data;
-    } catch (err) {
-      shopSettings = null;
-    }
   }
 
   function selectedMethod() {
@@ -365,102 +319,147 @@
 
   function onPaymentMethodChange() {
     const method = selectedMethod();
-    const isCash = method === 'CASH';
-    const isCredit = method === 'CREDIT';
-    const isUpi = method === 'UPI';
+    const isOnline = ONLINE_VALUES.includes(method);
 
-    document.getElementById('cashSection').classList.toggle('d-none', !isCash);
-    document.getElementById('creditSection').classList.toggle('d-none', !isCredit);
-    document.getElementById('upiSection').classList.toggle('d-none', !isUpi);
+    document.getElementById('offlineAmountSection').classList.toggle('d-none', isOnline);
+    document.getElementById('razorpayPanel').classList.toggle('d-none', !isOnline);
 
-    // Switching methods invalidates any in-progress/confirmed UPI payment
-    upiState = { paymentId: null, status: 'NONE', amount: null, transactionReference: null };
-    document.getElementById('upiConfirmedBox').classList.add('d-none');
-    document.getElementById('upiReferenceInput').value = '';
-    document.getElementById('upiPaymentStatus').textContent = 'Waiting For Payment';
-    document.getElementById('upiPaymentStatus').className = 'sb-badge pending';
+    // Switching methods invalidates any in-progress/completed payment for the old method
+    razorpayState = { paymentId: null, razorpayOrderId: null, status: 'NONE', transactionId: null, amount: null };
+    document.getElementById('rzSuccessBox').classList.add('d-none');
+    document.getElementById('rzFailBox').classList.add('d-none');
 
-    if (isCredit) {
-      document.getElementById('amountPaidInput').value = 0;
+    const methodLabel = (ONLINE_METHODS.find(m => m.value === method) || {}).label || method;
+    document.getElementById('rzSelectedMethod').textContent = methodLabel;
+    document.getElementById('rzPaymentStatus').textContent = 'PENDING';
+    document.getElementById('rzPaymentStatus').className = 'sb-badge pending';
+    document.getElementById('rzTransactionId').textContent = 'Not Generated';
+
+    if (!isOnline) {
+      // CASH: amount paid is manually editable. CREDIT: always pending, no collection now.
+      if (method === 'CREDIT') {
+        document.getElementById('amountPaidInput').value = 0;
+        document.getElementById('amountPaidInput').disabled = true;
+        document.getElementById('markFullyPaid').disabled = true;
+        document.getElementById('markFullyPaid').checked = false;
+      } else {
+        document.getElementById('amountPaidInput').disabled = false;
+        document.getElementById('markFullyPaid').disabled = false;
+      }
     }
 
-    if (isUpi) {
-      renderShopQrPanel();
-      initiateUpiPayment();
-    }
-
-    recalc();
+    updatePaymentStatusPreview();
   }
 
-  function renderShopQrPanel() {
-    const qrImage = document.getElementById('shopQrImage');
-    const qrWrap = document.getElementById('shopQrWrap');
-    const noQrMsg = document.getElementById('noShopQrMessage');
-
-    if (shopSettings && shopSettings.qrCodeImageUrl) {
-      qrImage.src = SmartBillAPI.BASE_URL.replace('/api', '') + shopSettings.qrCodeImageUrl;
-      qrWrap.classList.remove('d-none');
-      noQrMsg.classList.add('d-none');
-    } else {
-      qrWrap.classList.add('d-none');
-      noQrMsg.classList.remove('d-none');
-    }
-
-    document.getElementById('upiShopName').textContent = (shopSettings && shopSettings.shopName) || 'Not set up yet';
-    document.getElementById('upiShopUpiId').textContent = (shopSettings && shopSettings.upiId) || '—';
-  }
-
-  async function initiateUpiPayment() {
+  async function startRazorpayPayment() {
     const discount = Number(document.getElementById('discountInput').value || 0);
     const totals = BillDraft.calculateTotals(discount);
-    document.getElementById('upiAmountToPay').textContent = formatCurrency(totals.grandTotal);
+    const method = selectedMethod();
+    const btn = document.getElementById('payWithRazorpayBtn');
+
+    document.getElementById('rzSuccessBox').classList.add('d-none');
+    document.getElementById('rzFailBox').classList.add('d-none');
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Creating order…';
 
     try {
-      const res = await SmartBillAPI.post('/payments/upi/initiate', { amount: totals.grandTotal });
-      upiState.paymentId = res.data.paymentId;
-      upiState.status = 'PENDING';
-      upiState.amount = totals.grandTotal;
+      const orderRes = await SmartBillAPI.post('/payments/razorpay/order', {
+        amount: totals.grandTotal,
+        paymentMethod: method
+      });
+      const order = orderRes.data;
+      razorpayState.paymentId = order.paymentId;
+      razorpayState.razorpayOrderId = order.razorpayOrderId;
+      razorpayState.status = 'PENDING';
+
+      btn.innerHTML = '<i class="bi bi-credit-card-2-front"></i> Pay with Razorpay';
+      btn.disabled = false;
+
+      const header = BillDraft.getHeader();
+      const rzpOptions = {
+        key: order.razorpayKeyId,
+        amount: Math.round(order.amount * 100),
+        currency: order.currency,
+        name: 'SmartBill Pro',
+        description: `Invoice payment — ${header.customerName}`,
+        order_id: order.razorpayOrderId,
+        prefill: {
+          name: header.customerName || '',
+          contact: header.customerPhone || ''
+        },
+        theme: { color: '#2563EB' },
+        method: {
+          // mirrors the spec's requested method list inside Razorpay Checkout
+          upi: true, card: true, netbanking: true, wallet: true
+        },
+        handler: function (response) {
+          verifyRazorpayPayment(response, totals.grandTotal);
+        },
+        modal: {
+          ondismiss: function () {
+            if (razorpayState.status !== 'PAID') {
+              showRazorpayFailure();
+            }
+          }
+        }
+      };
+
+      const rzp = new Razorpay(rzpOptions);
+      rzp.on('payment.failed', function () {
+        showRazorpayFailure();
+      });
+      rzp.open();
+
     } catch (err) {
-      showToast(err.message || 'Could not start UPI payment', 'error');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-credit-card-2-front"></i> Pay with Razorpay';
+      showToast(err.message || 'Could not start payment. Check Razorpay configuration.', 'error');
     }
   }
 
-  async function confirmUpiPayment() {
-    if (!upiState.paymentId) {
-      showToast('Select UPI / QR Payment first', 'error');
-      return;
-    }
-    const btn = document.getElementById('confirmUpiPaymentBtn');
-    const reference = document.getElementById('upiReferenceInput').value.trim();
-
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Confirming…';
-
+  async function verifyRazorpayPayment(rzpResponse, grandTotal) {
     try {
-      const res = await SmartBillAPI.post(`/payments/upi/${upiState.paymentId}/confirm`, {
-        transactionReference: reference || null
+      const verifyRes = await SmartBillAPI.post('/payments/razorpay/verify', {
+        paymentId: razorpayState.paymentId,
+        razorpayOrderId: rzpResponse.razorpay_order_id,
+        razorpayPaymentId: rzpResponse.razorpay_payment_id,
+        razorpaySignature: rzpResponse.razorpay_signature
       });
-      const result = res.data;
+      const result = verifyRes.data;
 
-      upiState.status = 'PAID';
-      upiState.transactionReference = result.transactionReference;
+      if (result.paymentStatus === 'PAID') {
+        razorpayState.status = 'PAID';
+        razorpayState.transactionId = result.transactionId;
+        razorpayState.amount = result.amount;
 
-      document.getElementById('upiPaymentStatus').textContent = 'PAID';
-      document.getElementById('upiPaymentStatus').className = 'sb-badge paid';
+        document.getElementById('rzPaymentStatus').textContent = 'PAID';
+        document.getElementById('rzPaymentStatus').className = 'sb-badge paid';
+        document.getElementById('rzTransactionId').textContent = result.transactionId;
 
-      const confirmedBox = document.getElementById('upiConfirmedBox');
-      document.getElementById('upiConfirmedRef').textContent = result.transactionReference
-        ? `Reference: ${result.transactionReference}` : 'No reference number entered';
-      confirmedBox.classList.remove('d-none');
+        document.getElementById('rzSuccessTxnId').textContent = result.transactionId;
+        document.getElementById('rzSuccessAmount').textContent = formatCurrency(result.amount);
+        document.getElementById('rzSuccessBox').classList.remove('d-none');
+        document.getElementById('rzFailBox').classList.add('d-none');
 
-      showToast('Payment confirmed', 'success');
+        showToast('Payment successful', 'success');
+      } else {
+        showRazorpayFailure();
+      }
       updatePaymentStatusPreview();
     } catch (err) {
-      showToast(err.message || 'Could not confirm payment', 'error');
-    } finally {
-      btn.disabled = false;
-      btn.innerHTML = '<i class="bi bi-check-circle"></i> Confirm Payment';
+      showRazorpayFailure();
+      showToast(err.message || 'Payment verification failed', 'error');
     }
+  }
+
+  function showRazorpayFailure() {
+    razorpayState.status = 'FAILED';
+    document.getElementById('rzPaymentStatus').textContent = 'PENDING';
+    document.getElementById('rzPaymentStatus').className = 'sb-badge pending';
+    document.getElementById('rzFailBox').classList.remove('d-none');
+    document.getElementById('rzSuccessBox').classList.add('d-none');
+    updatePaymentStatusPreview();
   }
 
   function recalc() {
@@ -479,12 +478,6 @@
     document.getElementById('segTax').style.width = taxPct + '%';
     document.getElementById('segDiscount').style.width = Math.min(5, (discount / (total || 1)) * 100) + '%';
 
-    document.getElementById('creditDueAmount').textContent = formatCurrency(totals.grandTotal);
-
-    if (selectedMethod() === 'UPI') {
-      document.getElementById('upiAmountToPay').textContent = formatCurrency(totals.grandTotal);
-    }
-
     updatePaymentStatusPreview();
   }
 
@@ -494,41 +487,35 @@
     const method = selectedMethod();
     const badge = document.getElementById('paymentStatusPreview');
     const amountPaidPreview = document.getElementById('amountPaidPreview');
-    const changeDueRow = document.getElementById('changeDueRow');
 
     let status = 'PENDING', cls = 'pending', amountPaid = 0;
-    changeDueRow.classList.add('d-none');
 
     if (method === 'CREDIT') {
       status = 'PENDING'; cls = 'pending'; amountPaid = 0;
-    } else if (method === 'UPI') {
-      if (upiState.status === 'PAID') {
-        status = 'PAID'; cls = 'paid'; amountPaid = upiState.amount;
+    } else if (ONLINE_VALUES.includes(method)) {
+      if (razorpayState.status === 'PAID') {
+        status = 'PAID'; cls = 'paid'; amountPaid = razorpayState.amount;
       } else {
         status = 'PENDING'; cls = 'pending'; amountPaid = 0;
       }
     } else {
       // CASH
       amountPaid = Number(document.getElementById('amountPaidInput').value || 0);
-      if (amountPaid === totals.grandTotal && totals.grandTotal > 0) {
-        status = 'PAID'; cls = 'paid';
-      } else if (amountPaid > totals.grandTotal) {
-        status = 'PAID'; cls = 'paid';
-        const change = amountPaid - totals.grandTotal;
-        document.getElementById('changeDueAmount').textContent = formatCurrency(change);
-        changeDueRow.classList.remove('d-none');
-      } else if (amountPaid > 0) {
-        status = 'PARTIAL'; cls = 'partial';
-      }
+      if (amountPaid >= totals.grandTotal && totals.grandTotal > 0) { status = 'PAID'; cls = 'paid'; }
+      else if (amountPaid > 0) { status = 'PARTIAL'; cls = 'partial'; }
     }
 
     badge.textContent = status;
     badge.className = 'sb-badge ' + cls;
     amountPaidPreview.textContent = formatCurrency(amountPaid);
 
-    // Generate Invoice is disabled until a UPI payment is actually confirmed
+    // Generate Invoice is disabled until an online payment actually succeeds
     const generateBtn = document.getElementById('generateInvoiceBtn');
-    generateBtn.disabled = (method === 'UPI') && upiState.status !== 'PAID';
+    if (ONLINE_VALUES.includes(method)) {
+      generateBtn.disabled = razorpayState.status !== 'PAID';
+    } else {
+      generateBtn.disabled = false;
+    }
   }
 
   document.getElementById('generateInvoiceBtn').addEventListener('click', async () => {
@@ -537,25 +524,16 @@
     const items = BillDraft.getItems();
     const discount = Number(document.getElementById('discountInput').value || 0);
     const paymentMethod = selectedMethod();
-    const isUpi = paymentMethod === 'UPI';
+    const isOnline = ONLINE_VALUES.includes(paymentMethod);
 
-    if (isUpi && upiState.status !== 'PAID') {
-      showToast('Please confirm the UPI payment before generating the invoice', 'error');
+    if (isOnline && razorpayState.status !== 'PAID') {
+      showToast('Please complete the Razorpay payment before generating the invoice', 'error');
       return;
     }
 
-    const totals = BillDraft.calculateTotals(discount);
-    let amountPaid;
-    if (isUpi) {
-      amountPaid = upiState.amount;
-    } else if (paymentMethod === 'CREDIT') {
-      amountPaid = 0;
-    } else {
-      // CASH — cap at grand total even if the cashier entered more (change is handled separately,
-      // not recorded as "amount paid" on the invoice)
-      const entered = Number(document.getElementById('amountPaidInput').value || 0);
-      amountPaid = Math.min(entered, totals.grandTotal);
-    }
+    const amountPaid = isOnline
+      ? razorpayState.amount
+      : (paymentMethod === 'CREDIT' ? 0 : Number(document.getElementById('amountPaidInput').value || 0));
 
     const payload = {
       customerId: header.customerId || null,
@@ -574,7 +552,7 @@
       paymentMethod,
       amountPaid,
       finalize: true,
-      paymentId: isUpi ? upiState.paymentId : null
+      paymentId: isOnline ? razorpayState.paymentId : null
     };
 
     btn.disabled = true;
